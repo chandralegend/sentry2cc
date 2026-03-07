@@ -36,8 +36,8 @@ claude_code:
 
   permission_mode: "acceptEdits"
   system_prompt: null
-  max_turns: 30
-  max_budget_usd: 1.0
+  max_turns: 50
+  max_budget_usd: 3.0
   model: null
 
   # Custom template: explore codebase and write findings to a markdown file

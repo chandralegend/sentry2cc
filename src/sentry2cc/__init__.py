@@ -96,6 +96,13 @@ def main() -> None:
         logger.error("Config file not found: %s", config_path.resolve())
         sys.exit(1)
 
+    # Add the config file's directory to sys.path so that user-supplied
+    # trigger/post_execution modules (e.g. "wovar_rules") can be imported.
+    config_dir = str(config_path.resolve().parent)
+    if config_dir not in sys.path:
+        sys.path.insert(0, config_dir)
+        logger.debug("Added %s to sys.path for user module imports", config_dir)
+
     # Defer heavy imports until after logging is configured
     from sentry2cc.config import load_config
     from sentry2cc.runner import run_poll_loop

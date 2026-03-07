@@ -128,8 +128,13 @@ class ClaudeCodeConfig(BaseModel):
             "Directory where per-issue findings/output files are written. "
             "When set, a 'findings_path' variable (absolute path to "
             "<findings_dir>/<issue_id>.md) is automatically injected into the "
-            "prompt template as extra context."
+            "prompt template as extra context. The directory is also added to "
+            "add_dirs so the agent can write files there even if it's outside cwd."
         ),
+    )
+    add_dirs: list[str] = Field(
+        default_factory=list,
+        description="Additional directories the agent is allowed to read/write.",
     )
 
     @field_validator("findings_dir")
@@ -140,6 +145,16 @@ class ClaudeCodeConfig(BaseModel):
         path = Path(v).expanduser().resolve()
         path.mkdir(parents=True, exist_ok=True)
         return str(path)
+
+    @field_validator("add_dirs", mode="before")
+    @classmethod
+    def resolve_add_dirs(cls, v: list) -> list[str]:
+        resolved = []
+        for d in v:
+            p = Path(str(d)).expanduser().resolve()
+            p.mkdir(parents=True, exist_ok=True)
+            resolved.append(str(p))
+        return resolved
 
     @field_validator("cwd")
     @classmethod
