@@ -14,6 +14,7 @@ import asyncio
 import importlib
 import inspect
 import logging
+from pathlib import Path
 from typing import Any, Callable
 
 from sentry2cc.agent import run_agent
@@ -154,7 +155,17 @@ async def process_issue(
     # Step 3: Render the prompt
     try:
         issue_markdown = format_issue(issue, event)
-        prompt = render_prompt(issue, event, issue_markdown, config)
+
+        # Build extra context for templates — inject findings_path when configured
+        extra_context: dict = {}
+        if config.claude_code.findings_dir:
+            findings_path = Path(config.claude_code.findings_dir) / f"{issue.id}.md"
+            extra_context["findings_path"] = str(findings_path)
+            logger.debug("findings_path=%s", findings_path)
+
+        prompt = render_prompt(
+            issue, event, issue_markdown, config, extra_context=extra_context
+        )
         logger.debug("Rendered prompt for issue %s (%d chars)", issue.id, len(prompt))
     except Exception:
         logger.exception("Failed to render prompt for issue %s — skipping", issue.id)

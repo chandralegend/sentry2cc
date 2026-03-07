@@ -1,89 +1,57 @@
-# sentry2cc configuration
-# Copy this file, fill in your values, and run:
-#   sentry2cc --config sentry2cc.yaml
+# sentry2cc configuration — wovar-backend (stekz-eu)
+# Run with:
+#   cd examples/
+#   SENTRY_AUTH_TOKEN=sntryu_... sentry2cc --config sentry2cc.yaml --once
 
 # ---------------------------------------------------------------------------
 # Sentry connection settings
 # ---------------------------------------------------------------------------
 sentry:
-  # Auth token with event:read scope.
-  # Create one at https://sentry.io/settings/account/api/auth-tokens/
-  # Use ${ENV_VAR} syntax to read from environment variables.
   auth_token: "${SENTRY_AUTH_TOKEN}"
-
-  # Your Sentry organization slug (visible in the URL: sentry.io/<org>/)
-  organization: "my-org"
-
-  # The project slug to monitor
-  project: "my-project"
-
-  # For Sentry SaaS leave as default. Override for self-hosted Sentry.
+  organization: "stekz-eu"
+  project: "wovar-backend"
   base_url: "https://sentry.io"
-
-  # How often to poll for new issues (seconds). Minimum: 5.
   poll_interval: 60
-
-  # Sentry search query to filter which issues are considered.
-  # Default: only unresolved issues. Other examples:
-  #   "is:unresolved level:error"           -- errors only
-  #   "is:unresolved !has:assignee"         -- unassigned only
-  #   "is:unresolved times_seen:>10"        -- high-frequency only
   query: "is:unresolved"
 
 # ---------------------------------------------------------------------------
-# Trigger rule — controls which issues get sent to Claude Code
+# Trigger rule
 # ---------------------------------------------------------------------------
 trigger:
-  # Dotted Python module path. Must be importable from your working directory
-  # or installed in the same Python environment as sentry2cc.
-  module: "my_rules"
-  # Name of the async (or sync) function in that module.
-  function: "should_fix"
+  module: "wovar_rules"
+  function: "should_investigate"
 
 # ---------------------------------------------------------------------------
 # Claude Code Agent settings
 # ---------------------------------------------------------------------------
 claude_code:
-  # Path to the codebase root that Claude Code will operate on.
-  cwd: "/path/to/your/codebase"
+  cwd: "/Users/chandralegend/Documents/stekz/wms"
 
-  # Tools the agent is allowed to use (auto-approved, no confirmation prompts).
+  # Read-only tools — we are only investigating and documenting, not editing
   allowed_tools:
     - Read
-    - Edit
     - Glob
     - Grep
     - Bash
 
-  # Permission mode:
-  #   acceptEdits      — auto-approve file edits, ask for other actions
-  #   bypassPermissions — approve everything (use in sandboxed CI only)
-  #   default          — require a can_use_tool callback (not supported via YAML)
   permission_mode: "acceptEdits"
-
-  # Optional: override the system prompt sent to Claude.
-  # null = use the built-in Claude Code system prompt.
   system_prompt: null
-
-  # Maximum number of agentic turns (tool-use round trips).
-  max_turns: 50
-
-  # Maximum spend per issue in USD. null = no limit.
-  max_budget_usd: 2.0
-
-  # Claude model to use. null = SDK default (recommended).
+  max_turns: 30
+  max_budget_usd: 1.0
   model: null
 
-  # Path to a custom Jinja2 prompt template file.
-  # null = use the built-in default template.
-  # Available template variables: issue, event, issue_markdown, config
-  prompt_template: null
+  # Custom template: explore codebase and write findings to a markdown file
+  # Must be an absolute path or relative to the working directory where sentry2cc is run.
+  prompt_template: "/Users/chandralegend/Documents/stekz/sentry2claude/examples/wovar_prompt.j2"
+
+  # Directory where Claude writes the per-issue findings markdown files.
+  # The variable {{ findings_path }} in the template resolves to:
+  #   <findings_dir>/<issue_id>.md
+  findings_dir: "/Users/chandralegend/Documents/stekz/sentry2claude/examples/findings"
 
 # ---------------------------------------------------------------------------
-# Post-execution hook (optional)
+# Post-execution hook
 # ---------------------------------------------------------------------------
-# Called after the Claude Code agent finishes for each triggered issue.
-# Remove or comment out this section if you don't need a post-execution hook.
 post_execution:
-  module: "my_rules"
-  function: "after_fix"
+  module: "wovar_rules"
+  function: "print_findings"
