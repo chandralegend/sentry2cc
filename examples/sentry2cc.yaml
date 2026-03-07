@@ -1,0 +1,89 @@
+# sentry2cc configuration
+# Copy this file, fill in your values, and run:
+#   sentry2cc --config sentry2cc.yaml
+
+# ---------------------------------------------------------------------------
+# Sentry connection settings
+# ---------------------------------------------------------------------------
+sentry:
+  # Auth token with event:read scope.
+  # Create one at https://sentry.io/settings/account/api/auth-tokens/
+  # Use ${ENV_VAR} syntax to read from environment variables.
+  auth_token: "${SENTRY_AUTH_TOKEN}"
+
+  # Your Sentry organization slug (visible in the URL: sentry.io/<org>/)
+  organization: "my-org"
+
+  # The project slug to monitor
+  project: "my-project"
+
+  # For Sentry SaaS leave as default. Override for self-hosted Sentry.
+  base_url: "https://sentry.io"
+
+  # How often to poll for new issues (seconds). Minimum: 5.
+  poll_interval: 60
+
+  # Sentry search query to filter which issues are considered.
+  # Default: only unresolved issues. Other examples:
+  #   "is:unresolved level:error"           -- errors only
+  #   "is:unresolved !has:assignee"         -- unassigned only
+  #   "is:unresolved times_seen:>10"        -- high-frequency only
+  query: "is:unresolved"
+
+# ---------------------------------------------------------------------------
+# Trigger rule — controls which issues get sent to Claude Code
+# ---------------------------------------------------------------------------
+trigger:
+  # Dotted Python module path. Must be importable from your working directory
+  # or installed in the same Python environment as sentry2cc.
+  module: "my_rules"
+  # Name of the async (or sync) function in that module.
+  function: "should_fix"
+
+# ---------------------------------------------------------------------------
+# Claude Code Agent settings
+# ---------------------------------------------------------------------------
+claude_code:
+  # Path to the codebase root that Claude Code will operate on.
+  cwd: "/path/to/your/codebase"
+
+  # Tools the agent is allowed to use (auto-approved, no confirmation prompts).
+  allowed_tools:
+    - Read
+    - Edit
+    - Glob
+    - Grep
+    - Bash
+
+  # Permission mode:
+  #   acceptEdits      — auto-approve file edits, ask for other actions
+  #   bypassPermissions — approve everything (use in sandboxed CI only)
+  #   default          — require a can_use_tool callback (not supported via YAML)
+  permission_mode: "acceptEdits"
+
+  # Optional: override the system prompt sent to Claude.
+  # null = use the built-in Claude Code system prompt.
+  system_prompt: null
+
+  # Maximum number of agentic turns (tool-use round trips).
+  max_turns: 50
+
+  # Maximum spend per issue in USD. null = no limit.
+  max_budget_usd: 2.0
+
+  # Claude model to use. null = SDK default (recommended).
+  model: null
+
+  # Path to a custom Jinja2 prompt template file.
+  # null = use the built-in default template.
+  # Available template variables: issue, event, issue_markdown, config
+  prompt_template: null
+
+# ---------------------------------------------------------------------------
+# Post-execution hook (optional)
+# ---------------------------------------------------------------------------
+# Called after the Claude Code agent finishes for each triggered issue.
+# Remove or comment out this section if you don't need a post-execution hook.
+post_execution:
+  module: "my_rules"
+  function: "after_fix"
