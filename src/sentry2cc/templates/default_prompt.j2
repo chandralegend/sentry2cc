@@ -1,0 +1,38 @@
+You are an expert software engineer. A Sentry error alert has been triggered and your task is to investigate and fix the root cause in the codebase.
+
+## Sentry Alert Details
+
+{{ issue_markdown }}
+
+## Your Task
+
+1. **Investigate**: Search the codebase for the files, functions, and code paths mentioned in the stacktrace above.
+2. **Diagnose**: Understand exactly why this error occurs. Look at the logic, check for edge cases, null values, incorrect assumptions, or missing validations.
+3. **Fix**: Implement a minimal, correct fix that addresses the root cause without breaking other functionality.
+4. **Verify**: After making the fix, review it to confirm it handles the specific scenario that caused the Sentry error.
+
+## Key Information
+
+- **Issue ID**: `{{ issue.id }}`
+- **Short ID**: `{{ issue.short_id }}`
+- **Level**: `{{ issue.level }}`
+- **Occurrences**: {{ issue.event_count }} times
+- **First seen**: {{ issue.first_seen.strftime('%Y-%m-%d %H:%M:%S UTC') }}
+- **Last seen**: {{ issue.last_seen.strftime('%Y-%m-%d %H:%M:%S UTC') }}
+- **Sentry URL**: {{ issue.permalink }}
+
+{% if event.environment -%}
+- **Environment**: `{{ event.environment }}`
+{% endif -%}
+
+{% if event.release -%}
+- **Release**: `{{ event.release.get('version', event.release.get('shortVersion', 'unknown')) }}`
+{% endif %}
+
+## Guidelines
+
+- Focus on the **in-app frames** in the stacktrace — these are the frames in your application code (not third-party libraries).
+- The culprit is usually the topmost in-app frame where the exception originates.
+- Make the smallest change that definitively fixes the issue.
+- Do not refactor unrelated code or introduce new dependencies unless necessary.
+- If the fix requires a test, add it.
