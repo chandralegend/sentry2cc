@@ -13,9 +13,10 @@ from __future__ import annotations
 import asyncio
 import importlib
 import inspect
-import logging
 from pathlib import Path
 from typing import Any, Callable
+
+from loguru import logger
 
 from sentry2cc.agent import run_agent
 from sentry2cc.config import FunctionRef, Sentry2CCConfig
@@ -23,8 +24,6 @@ from sentry2cc.formatter import format_issue
 from sentry2cc.models import AgentResult, SentryEvent, SentryIssue
 from sentry2cc.prompt import render_prompt
 from sentry2cc.sentry_client import SentryClient, SentryAPIError
-
-logger = logging.getLogger(__name__)
 
 
 # ---------------------------------------------------------------------------
@@ -69,7 +68,7 @@ def load_function(ref: FunctionRef) -> Callable:
     if not callable(func):
         raise TypeError(f"'{ref.module}.{ref.function}' is not callable")
 
-    logger.debug("Loaded function: %s.%s", ref.module, ref.function)
+    logger.debug("Loaded function: {}.{}", ref.module, ref.function)
     return func
 
 
@@ -119,7 +118,7 @@ async def process_issue(
     config:
         Full sentry2cc configuration.
     """
-    logger.info("Evaluating trigger for issue %s (%s)", issue.id, issue.short_id)
+    logger.info("Evaluating trigger for issue {} ({})", issue.id, issue.short_id)
 
     trigger_kwargs = config.trigger.kwargs
 
@@ -130,16 +129,16 @@ async def process_issue(
         )
     except Exception:
         logger.exception(
-            "Trigger rule raised an exception for issue %s — skipping", issue.id
+            "Trigger rule raised an exception for issue {} — skipping", issue.id
         )
         return
 
     if not should_trigger:
-        logger.debug("Issue %s did not pass the trigger rule — skipping", issue.id)
+        logger.debug("Issue {} did not pass the trigger rule — skipping", issue.id)
         return
 
     logger.info(
-        "Issue %s triggered! title=%r level=%s occurrences=%s",
+        "Issue {} triggered! title={!r} level={} occurrences={}",
         issue.id,
         issue.title,
         issue.level,
@@ -149,10 +148,10 @@ async def process_issue(
     # Step 2: Fetch the latest event
     try:
         event: SentryEvent = await sentry_client.get_latest_event(issue.id)
-        logger.debug("Fetched latest event %s for issue %s", event.event_id, issue.id)
+        logger.debug("Fetched latest event {} for issue {}", event.event_id, issue.id)
     except SentryAPIError as exc:
         logger.error(
-            "Failed to fetch latest event for issue %s: %s — skipping", issue.id, exc
+            "Failed to fetch latest event for issue {}: {} — skipping", issue.id, exc
         )
         return
 
@@ -160,7 +159,7 @@ async def process_issue(
     try:
         issue_markdown = format_issue(issue, event)
         logger.debug(
-            "Issue markdown for %s (%d chars):\n%s",
+            "Issue markdown for {} ({} chars):\n{}",
             issue.id,
             len(issue_markdown),
             issue_markdown,
@@ -174,21 +173,21 @@ async def process_issue(
             issue, event, issue_markdown, config, extra_context=extra_context
         )
         logger.debug(
-            "Rendered prompt for issue %s (%d chars):\n%s",
+            "Rendered prompt for issue {} ({} chars):\n{}",
             issue.id,
             len(prompt),
             prompt,
         )
     except Exception:
-        logger.exception("Failed to render prompt for issue %s — skipping", issue.id)
+        logger.exception("Failed to render prompt for issue {} — skipping", issue.id)
         return
 
     # Step 4: Run the Claude Code agent
-    logger.info("Dispatching Claude Code agent for issue %s...", issue.id)
+    logger.info("Dispatching Claude Code agent for issue {}...", issue.id)
     try:
         result: AgentResult = await run_agent(prompt, config.claude_code)
     except Exception:
-        logger.exception("Claude Code agent raised an exception for issue %s", issue.id)
+        logger.exception("Claude Code agent raised an exception for issue {}", issue.id)
         # Still call post-execution if available, with a synthetic error result
         result = AgentResult(
             session_id="error",
@@ -201,7 +200,7 @@ async def process_issue(
 
     status_str = "SUCCESS" if result.success else "ERROR"
     logger.info(
-        "Agent finished for issue %s: %s | turns=%d | cost=$%.4f",
+        "Agent finished for issue {}: {} | turns={} | cost=${:.4f}",
         issue.id,
         status_str,
         result.num_turns,
@@ -210,7 +209,7 @@ async def process_issue(
 
     # Step 5: Post-execution hook
     if post_exec_fn is not None:
-        logger.info("Running post-execution hook for issue %s", issue.id)
+        logger.info("Running post-execution hook for issue {}", issue.id)
         post_exec_kwargs = config.post_execution.kwargs if config.post_execution else {}
         try:
             await _call_maybe_async(
@@ -223,7 +222,7 @@ async def process_issue(
             )
         except Exception:
             logger.exception(
-                "Post-execution hook raised an exception for issue %s", issue.id
+                "Post-execution hook raised an exception for issue {}", issue.id
             )
 
 
@@ -256,7 +255,7 @@ async def run_poll_loop(
     )
 
     logger.info(
-        "sentry2cc starting | org=%s project=%s interval=%ds query=%r",
+        "sentry2cc starting | org={} project={} interval={}s query={!r}",
         config.sentry.organization,
         config.sentry.project,
         config.sentry.poll_interval,
@@ -280,10 +279,10 @@ async def run_poll_loop(
             )
 
             if run_once:
-                logger.info("--once flag set; exiting after single poll")
+                logger.info("--once flag set — exiting after single poll")
                 break
 
-            logger.info("Sleeping %ds until next poll...", config.sentry.poll_interval)
+            logger.info("Sleeping {}s until next poll...", config.sentry.poll_interval)
             await asyncio.sleep(config.sentry.poll_interval)
 
 
@@ -294,7 +293,7 @@ async def _poll_once(
     post_exec_fn: Callable | None,
 ) -> None:
     """Perform a single poll: fetch issues and process each one."""
-    logger.info("Polling Sentry for issues (query=%r)...", config.sentry.query)
+    logger.info("Polling Sentry for issues (query={!r})...", config.sentry.query)
 
     try:
         issues, next_cursor = await sentry_client.list_issues(
@@ -303,7 +302,7 @@ async def _poll_once(
             sort=config.sentry.sort,
         )
     except SentryAPIError as exc:
-        logger.error("Sentry API error during poll: %s", exc)
+        logger.error("Sentry API error during poll: {}", exc)
         return
     except Exception:
         logger.exception("Unexpected error while polling Sentry")
@@ -313,7 +312,7 @@ async def _poll_once(
         logger.info("No issues found matching query")
         return
 
-    logger.info("Fetched %d issue(s)", len(issues))
+    logger.info("Fetched {} issue(s)", len(issues))
 
     for issue in issues:
         await process_issue(

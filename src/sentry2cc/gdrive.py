@@ -30,13 +30,11 @@ Usage
 
 from __future__ import annotations
 
-import logging
 from pathlib import Path
 from typing import Any
 
 import httpx
-
-logger = logging.getLogger(__name__)
+from loguru import logger
 
 # OAuth2 scopes needed for full Drive access (folder creation + file upload)
 _SCOPES = ["https://www.googleapis.com/auth/drive"]
@@ -126,7 +124,7 @@ class GoogleDriveClient:
 
         creds = None
         if self._token_file and self._token_file.exists():
-            logger.debug("Loading Drive OAuth token from %s", self._token_file)
+            logger.debug("Loading Drive OAuth token from {}", self._token_file)
             creds = Credentials.from_authorized_user_file(
                 str(self._token_file), _SCOPES
             )
@@ -148,7 +146,7 @@ class GoogleDriveClient:
             if self._token_file:
                 self._token_file.parent.mkdir(parents=True, exist_ok=True)
                 self._token_file.write_text(creds.to_json())
-                logger.debug("Drive OAuth token saved to %s", self._token_file)
+                logger.debug("Drive OAuth token saved to {}", self._token_file)
 
         self._oauth_service = build("drive", "v3", credentials=creds)
         logger.debug("Google Drive OAuth2 service ready")
@@ -193,7 +191,7 @@ class GoogleDriveClient:
         resp = self._http.get(f"{_DRIVE_API}/files", params=params)
         if not resp.is_success:
             logger.warning(
-                "Drive API key folder check failed (status=%d): %s",
+                "Drive API key folder check failed (status={}): {}",
                 resp.status_code,
                 resp.text[:200],
             )
@@ -201,7 +199,7 @@ class GoogleDriveClient:
         files = resp.json().get("files", [])
         found = len(files) > 0
         logger.debug(
-            "Drive folder '%s' under %s: %s (API key)",
+            "Drive folder '{}' under {}: {} (API key)",
             name,
             parent_id,
             "found" if found else "not found",
@@ -228,7 +226,7 @@ class GoogleDriveClient:
         files = results.get("files", [])
         found = len(files) > 0
         logger.debug(
-            "Drive folder '%s' under %s: %s (OAuth2)",
+            "Drive folder '{}' under {}: {} (OAuth2)",
             name,
             parent_id,
             "found" if found else "not found",
@@ -262,7 +260,7 @@ class GoogleDriveClient:
         files = results.get("files", [])
         if files:
             folder_id = files[0]["id"]
-            logger.debug("Reusing existing Drive folder '%s' (id=%s)", name, folder_id)
+            logger.debug("Reusing existing Drive folder '{}' (id={})", name, folder_id)
             return folder_id
 
         metadata = {
@@ -273,7 +271,7 @@ class GoogleDriveClient:
         folder = svc.files().create(body=metadata, fields="id").execute()
         folder_id = folder["id"]
         logger.info(
-            "Created Drive folder '%s' (id=%s) under parent %s",
+            "Created Drive folder '{}' (id={}) under parent {}",
             name,
             folder_id,
             parent_id,
@@ -303,7 +301,7 @@ class GoogleDriveClient:
             svc.files().create(body=metadata, media_body=media, fields="id").execute()
         )
         file_id = result["id"]
-        logger.debug("Uploaded '%s' → Drive id=%s", local_path.name, file_id)
+        logger.debug("Uploaded '{}' → Drive id={}", local_path.name, file_id)
         return file_id
 
     def upload_directory(
@@ -330,7 +328,7 @@ class GoogleDriveClient:
 
         file_count = sum(1 for f in local_dir.rglob("*") if f.is_file())
         logger.info(
-            "Uploaded directory '%s' (%d files) to Drive folder id=%s",
+            "Uploaded directory '{}' ({} files) to Drive folder id={}",
             local_dir,
             file_count,
             root_id,

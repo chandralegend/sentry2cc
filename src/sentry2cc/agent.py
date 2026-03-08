@@ -7,7 +7,6 @@ with a given prompt and returning a typed AgentResult.
 
 from __future__ import annotations
 
-import logging
 from typing import TYPE_CHECKING, AsyncIterator
 
 from claude_agent_sdk import (
@@ -18,13 +17,12 @@ from claude_agent_sdk import (
     ToolUseBlock,
     query,
 )
+from loguru import logger
 
 from sentry2cc.models import AgentResult
 
 if TYPE_CHECKING:
     from sentry2cc.config import ClaudeCodeConfig
-
-logger = logging.getLogger(__name__)
 
 
 def build_agent_options(config: ClaudeCodeConfig) -> ClaudeAgentOptions:
@@ -101,7 +99,7 @@ async def run_agent(
     options = build_agent_options(config)
 
     logger.info(
-        "Starting Claude Code agent (cwd=%s, tools=%s, mode=%s)",
+        "Starting Claude Code agent (cwd={}, tools={}, mode={})",
         config.cwd,
         config.allowed_tools,
         config.permission_mode,
@@ -117,7 +115,7 @@ async def run_agent(
         elif isinstance(message, ResultMessage):
             result_message = message
             logger.info(
-                "Agent finished: subtype=%s, turns=%d, cost=$%.4f",
+                "Agent finished: subtype={}, turns={}, cost=${:.4f}",
                 message.subtype,
                 message.num_turns,
                 message.total_cost_usd or 0.0,
@@ -151,11 +149,11 @@ def _log_assistant_message(message: AssistantMessage) -> None:
             # Log each line separately for cleaner output
             for line in block.text.splitlines():
                 if line.strip():
-                    logger.info("[Claude] %s", line)
+                    logger.info("[Claude] {}", line)
         elif isinstance(block, ToolUseBlock):
             # Show tool calls with key input fields
             input_summary = _summarise_tool_input(block.name, block.input)
-            logger.info("[Tool] %s(%s)", block.name, input_summary)
+            logger.info("[Tool] {}({})", block.name, input_summary)
 
 
 def _summarise_tool_input(tool_name: str, input_data: dict) -> str:

@@ -17,17 +17,61 @@ from pathlib import Path
 
 
 def _configure_logging(level: str) -> None:
-    """Set up structured logging for the application."""
-    numeric_level = getattr(logging, level.upper(), logging.INFO)
-    logging.basicConfig(
-        level=numeric_level,
-        format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
-        datefmt="%Y-%m-%d %H:%M:%S",
-        stream=sys.stderr,
+    """
+    Configure loguru as the sole logging backend.
+
+    - Removes loguru's default handler and adds a clean stderr sink with a
+      format suited for CLI output.
+    - Intercepts stdlib logging (used by httpx, httpcore, google-auth, etc.)
+      and routes it through loguru so all output is uniform.
+    - Suppresses noisy third-party loggers at WARNING level.
+    """
+    from loguru import logger
+
+    # Remove the default loguru handler (prints to stderr with its own format)
+    logger.remove()
+
+    # Add a single stderr sink with a readable format
+    logger.add(
+        sys.stderr,
+        level=level.upper(),
+        format=(
+            "<green>{time:YYYY-MM-DD HH:mm:ss}</green> "
+            "[<level>{level: <8}</level>] "
+            "<cyan>{name}</cyan>: "
+            "{message}"
+        ),
+        colorize=True,
+        backtrace=True,  # full traceback on exceptions
+        diagnose=True,  # variable values in tracebacks (disable in prod if needed)
     )
-    # Silence overly verbose third-party loggers
-    logging.getLogger("httpx").setLevel(logging.WARNING)
-    logging.getLogger("httpcore").setLevel(logging.WARNING)
+
+    # Intercept stdlib logging → loguru so third-party libs (httpx, google-auth)
+    # go through the same sink instead of printing raw to stderr.
+    class _InterceptHandler(logging.Handler):
+        def emit(self, record: logging.LogRecord) -> None:
+            # Map stdlib level to loguru level name
+            try:
+                lvl = logger.level(record.levelname).name
+            except ValueError:
+                lvl = record.levelno  # type: ignore[assignment]
+
+            # Find the correct caller depth so loguru shows the right source location
+            frame, depth = sys._getframe(6), 6
+            while frame and frame.f_code.co_filename == logging.__file__:
+                frame = frame.f_back  # type: ignore[assignment]
+                depth += 1
+
+            logger.opt(depth=depth, exception=record.exc_info).log(
+                lvl, record.getMessage()
+            )
+
+    # Replace the root stdlib handler with our interceptor
+    logging.basicConfig(handlers=[_InterceptHandler()], level=0, force=True)
+
+    # Silence noisy third-party loggers
+    for noisy in ("httpx", "httpcore", "googleapiclient", "google.auth"):
+        logging.getLogger(noisy).setLevel(logging.WARNING)
 
 
 def _build_parser() -> argparse.ArgumentParser:
@@ -85,15 +129,16 @@ examples:
 
 def main() -> None:
     """CLI entry point for sentry2cc."""
+    from loguru import logger
+
     parser = _build_parser()
     args = parser.parse_args()
 
     _configure_logging(args.log_level)
-    logger = logging.getLogger("sentry2cc")
 
     config_path = Path(args.config)
     if not config_path.exists():
-        logger.error("Config file not found: %s", config_path.resolve())
+        logger.error("Config file not found: {}", config_path.resolve())
         sys.exit(1)
 
     # Add the config file's directory to sys.path so that user-supplied
@@ -101,17 +146,17 @@ def main() -> None:
     config_dir = str(config_path.resolve().parent)
     if config_dir not in sys.path:
         sys.path.insert(0, config_dir)
-        logger.debug("Added %s to sys.path for user module imports", config_dir)
+        logger.debug("Added {} to sys.path for user module imports", config_dir)
 
     # Defer heavy imports until after logging is configured
     from sentry2cc.config import load_config
     from sentry2cc.runner import run_poll_loop
 
-    logger.info("Loading config from %s", config_path.resolve())
+    logger.info("Loading config from {}", config_path.resolve())
     try:
         config = load_config(config_path)
     except Exception as exc:
-        logger.error("Failed to load config: %s", exc)
+        logger.error("Failed to load config: {}", exc)
         sys.exit(1)
 
     try:

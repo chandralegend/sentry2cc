@@ -14,18 +14,16 @@ the YAML config. If not set, the built-in ``default_prompt.j2`` is used.
 
 from __future__ import annotations
 
-import logging
 from importlib import resources
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 from jinja2 import Environment, FileSystemLoader, StrictUndefined, select_autoescape
+from loguru import logger
 
 if TYPE_CHECKING:
     from sentry2cc.config import Sentry2CCConfig
     from sentry2cc.models import SentryEvent, SentryIssue
-
-logger = logging.getLogger(__name__)
 
 # Path to the built-in templates directory (shipped with the package)
 _TEMPLATES_PACKAGE = "sentry2cc.templates"
@@ -98,7 +96,7 @@ def render_prompt(
     if user_template_path:
         # User-supplied template
         tpl_path = Path(user_template_path)
-        logger.debug("Using user-supplied prompt template: %s", tpl_path)
+        logger.debug("Using user-supplied prompt template: {}", tpl_path)
         env, tpl_name = _make_env_from_path(tpl_path)
         template = env.get_template(tpl_name)
     else:
@@ -114,5 +112,5 @@ def render_prompt(
         template = env.from_string(source)
 
     rendered = template.render(**context)
-    logger.debug("Rendered prompt (%d chars)", len(rendered))
+    logger.debug("Rendered prompt ({} chars)", len(rendered))
     return rendered

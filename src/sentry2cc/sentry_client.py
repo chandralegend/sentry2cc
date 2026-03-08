@@ -7,14 +7,12 @@ Uses httpx for async HTTP with automatic retries on transient errors.
 
 from __future__ import annotations
 
-import logging
 from typing import Any
 
 import httpx
+from loguru import logger
 
 from sentry2cc.models import SentryEvent, SentryIssue
-
-logger = logging.getLogger(__name__)
 
 # Sentry REST API v0 base path
 _API_BASE = "/api/0"
@@ -88,7 +86,7 @@ class SentryClient:
             follow_redirects=True,
         )
         logger.debug(
-            "SentryClient opened (org=%s, project=%s)",
+            "SentryClient opened (org={}, project={})",
             self._organization,
             self._project,
         )
@@ -120,7 +118,7 @@ class SentryClient:
         """Make an authenticated API request and return parsed JSON."""
         client = self._require_client()
         url = f"{_API_BASE}{path}"
-        logger.debug("%s %s", method.upper(), url)
+        logger.debug("{} {}", method.upper(), url)
 
         response = await client.request(method, url, **kwargs)
 
@@ -184,7 +182,7 @@ class SentryClient:
 
         client = self._require_client()
         url = f"{_API_BASE}/projects/{self._organization}/{self._project}/issues/"
-        logger.debug("GET %s params=%s", url, params)
+        logger.debug("GET {} params={}", url, params)
 
         response = await client.get(url, params=params)
         if not response.is_success:
@@ -200,7 +198,7 @@ class SentryClient:
         # Extract next cursor from Link header
         next_cursor = _parse_next_cursor(response.headers.get("Link", ""))
 
-        logger.debug("Fetched %d issues (next_cursor=%s)", len(issues), next_cursor)
+        logger.debug("Fetched {} issues (next_cursor={})", len(issues), next_cursor)
         return issues, next_cursor
 
     async def get_issue(self, issue_id: str) -> SentryIssue:
