@@ -146,29 +146,10 @@ class ClaudeCodeConfig(BaseModel):
         None,
         description="Path to a Jinja2 template file. If null, the built-in default is used.",
     )
-    findings_dir: str | None = Field(
-        None,
-        description=(
-            "Directory where per-issue findings/output files are written. "
-            "When set, a 'findings_path' variable (absolute path to "
-            "<findings_dir>/<issue_id>.md) is automatically injected into the "
-            "prompt template as extra context. The directory is also added to "
-            "add_dirs so the agent can write files there even if it's outside cwd."
-        ),
-    )
     add_dirs: list[str] = Field(
         default_factory=list,
         description="Additional directories the agent is allowed to read/write.",
     )
-
-    @field_validator("findings_dir")
-    @classmethod
-    def resolve_findings_dir(cls, v: str | None) -> str | None:
-        if v is None:
-            return None
-        path = Path(v).expanduser().resolve()
-        path.mkdir(parents=True, exist_ok=True)
-        return str(path)
 
     @field_validator("add_dirs", mode="before")
     @classmethod

@@ -166,15 +166,9 @@ async def process_issue(
             issue_markdown,
         )
 
-        # Build extra context for templates — inject findings_path when configured
-        extra_context: dict = {}
-        if config.claude_code.findings_dir:
-            findings_path = Path(config.claude_code.findings_dir) / f"{issue.id}.md"
-            extra_context["findings_path"] = str(findings_path)
-            # Also expose the directory itself and the short_id sub-folder path
-            # so templates can reference {{ findings_dir }}/{{ issue.short_id }}/
-            extra_context["findings_dir"] = config.claude_code.findings_dir
-            logger.debug("findings_path=%s", findings_path)
+        # Build extra context for templates from trigger kwargs so templates
+        # can reference any user-defined value (e.g. {{ findings_dir }})
+        extra_context: dict = dict(trigger_kwargs)
 
         prompt = render_prompt(
             issue, event, issue_markdown, config, extra_context=extra_context
@@ -225,8 +219,6 @@ async def process_issue(
                 event,
                 result,
                 sentry_client,
-                config=config,
-                findings_dir=config.claude_code.findings_dir,
                 **post_exec_kwargs,
             )
         except Exception:

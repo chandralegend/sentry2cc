@@ -59,12 +59,8 @@ def build_agent_options(config: ClaudeCodeConfig) -> ClaudeAgentOptions:
     if config.model:
         kwargs["model"] = config.model
 
-    # Build add_dirs: user-specified dirs + findings_dir (so agent can write there)
-    extra_dirs: list[str] = list(config.add_dirs)
-    if config.findings_dir and config.findings_dir not in extra_dirs:
-        extra_dirs.append(config.findings_dir)
-    if extra_dirs:
-        kwargs["add_dirs"] = extra_dirs
+    if config.add_dirs:
+        kwargs["add_dirs"] = list(config.add_dirs)
 
     return ClaudeAgentOptions(**kwargs)
 
