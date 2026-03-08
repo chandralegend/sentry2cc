@@ -22,8 +22,8 @@ def _configure_logging(level: str) -> None:
 
     - Removes loguru's default handler and adds a clean stderr sink with a
       format suited for CLI output.
-    - Intercepts stdlib logging (used by httpx, httpcore, google-auth, etc.)
-      and routes it through loguru so all output is uniform.
+    - Intercepts stdlib logging (used by httpx, httpcore, and any other
+      third-party libs) and routes it through loguru so all output is uniform.
     - Suppresses noisy third-party loggers at WARNING level.
     """
     from loguru import logger
@@ -70,7 +70,7 @@ def _configure_logging(level: str) -> None:
     logging.basicConfig(handlers=[_InterceptHandler()], level=0, force=True)
 
     # Silence noisy third-party loggers
-    for noisy in ("httpx", "httpcore", "googleapiclient", "google.auth"):
+    for noisy in ("httpx", "httpcore"):
         logging.getLogger(noisy).setLevel(logging.WARNING)
 
 
