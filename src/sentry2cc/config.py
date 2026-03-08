@@ -92,6 +92,23 @@ class SentryConfig(BaseModel):
     base_url: str = "https://sentry.io"
     poll_interval: int = Field(30, ge=5, description="Seconds between polls")
     query: str = "is:unresolved"
+    issue_limit: int = Field(
+        25,
+        ge=1,
+        le=100,
+        description=(
+            "Maximum number of issues to fetch per poll. "
+            "Set to a small number (e.g. 3) to process only the most recent issues."
+        ),
+    )
+    sort: str = Field(
+        "new",
+        description=(
+            "Sort order for fetched issues. "
+            "Sentry-supported values: 'date' (last seen), 'new' (first seen/date added), "
+            "'freq' (event count), 'priority', 'trends', 'user'."
+        ),
+    )
 
     @field_validator("base_url")
     @classmethod

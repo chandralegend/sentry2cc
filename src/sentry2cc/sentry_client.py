@@ -147,6 +147,7 @@ class SentryClient:
         cursor: str | None = None,
         limit: int = 25,
         stats_period: str = "24h",
+        sort: str | None = None,
     ) -> tuple[list[SentryIssue], str | None]:
         """
         List issues (groups) for the configured project.
@@ -161,6 +162,10 @@ class SentryClient:
             Maximum number of issues to return per page.
         stats_period:
             Stats time window to include ("24h", "14d", or "" to disable).
+        sort:
+            Sort order. Sentry-supported values: ``"date"`` (last seen, default),
+            ``"new"`` (first seen / date added), ``"freq"`` (event count),
+            ``"priority"``, ``"trends"``, ``"user"``.
 
         Returns
         -------
@@ -174,6 +179,8 @@ class SentryClient:
         }
         if cursor:
             params["cursor"] = cursor
+        if sort:
+            params["sort"] = sort
 
         client = self._require_client()
         url = f"{_API_BASE}/projects/{self._organization}/{self._project}/issues/"

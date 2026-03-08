@@ -8,3 +8,6 @@ wheels/
 
 # Virtual environments
 .venv
+
+# Gitignored local configs (credentials, tokens, workspace-specific settings)
+.sentry2cc/

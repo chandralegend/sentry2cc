@@ -161,6 +161,9 @@ async def process_issue(
         if config.claude_code.findings_dir:
             findings_path = Path(config.claude_code.findings_dir) / f"{issue.id}.md"
             extra_context["findings_path"] = str(findings_path)
+            # Also expose the directory itself and the short_id sub-folder path
+            # so templates can reference {{ findings_dir }}/{{ issue.short_id }}/
+            extra_context["findings_dir"] = config.claude_code.findings_dir
             logger.debug("findings_path=%s", findings_path)
 
         prompt = render_prompt(
@@ -200,7 +203,15 @@ async def process_issue(
     if post_exec_fn is not None:
         logger.info("Running post-execution hook for issue %s", issue.id)
         try:
-            await _call_maybe_async(post_exec_fn, issue, event, result, sentry_client)
+            await _call_maybe_async(
+                post_exec_fn,
+                issue,
+                event,
+                result,
+                sentry_client,
+                config=config,
+                findings_dir=config.claude_code.findings_dir,
+            )
         except Exception:
             logger.exception(
                 "Post-execution hook raised an exception for issue %s", issue.id
@@ -279,6 +290,8 @@ async def _poll_once(
     try:
         issues, next_cursor = await sentry_client.list_issues(
             query=config.sentry.query,
+            limit=config.sentry.issue_limit,
+            sort=config.sentry.sort,
         )
     except SentryAPIError as exc:
         logger.error("Sentry API error during poll: %s", exc)
