@@ -121,6 +121,13 @@ class FunctionRef(BaseModel):
 
     module: str = Field(..., description="Dotted Python module path")
     function: str = Field(..., description="Function name within the module")
+    kwargs: dict[str, Any] = Field(
+        default_factory=dict,
+        description=(
+            "Static keyword arguments forwarded to the function on every call. "
+            "Values support ${ENV_VAR} interpolation."
+        ),
+    )
 
 
 class ClaudeCodeConfig(BaseModel):

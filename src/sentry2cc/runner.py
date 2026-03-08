@@ -121,9 +121,13 @@ async def process_issue(
     """
     logger.info("Evaluating trigger for issue %s (%s)", issue.id, issue.short_id)
 
+    trigger_kwargs = config.trigger.kwargs
+
     # Step 1: Trigger rule
     try:
-        should_trigger = await _call_maybe_async(trigger_fn, issue, sentry_client)
+        should_trigger = await _call_maybe_async(
+            trigger_fn, issue, sentry_client, **trigger_kwargs
+        )
     except Exception:
         logger.exception(
             "Trigger rule raised an exception for issue %s — skipping", issue.id
@@ -202,6 +206,7 @@ async def process_issue(
     # Step 5: Post-execution hook
     if post_exec_fn is not None:
         logger.info("Running post-execution hook for issue %s", issue.id)
+        post_exec_kwargs = config.post_execution.kwargs if config.post_execution else {}
         try:
             await _call_maybe_async(
                 post_exec_fn,
@@ -211,6 +216,7 @@ async def process_issue(
                 sentry_client,
                 config=config,
                 findings_dir=config.claude_code.findings_dir,
+                **post_exec_kwargs,
             )
         except Exception:
             logger.exception(
