@@ -45,7 +45,7 @@ Requires Python ≥ 3.10 and [uv](https://docs.astral.sh/uv/).
 
 ```bash
 # Install from source
-git clone https://github.com/anomalyco/sentry2cc
+git clone https://github.com/chandralegend/sentry2cc
 cd sentry2cc
 uv sync
 
