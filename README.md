@@ -13,24 +13,24 @@ The tool is deliberately minimal: it handles the plumbing (Sentry API, prompt re
 │  Every N seconds                                                │
 │                                                                 │
 │  Sentry API ──► list_issues(query, limit, sort)                 │
-│                      │                                         │
+│                      │                                          │
 │               for each issue:                                   │
-│                      │                                         │
-│                      ▼                                         │
+│                      │                                          │
+│                      ▼                                          │
 │            trigger_fn(issue, client, **kwargs)                  │
 │                 └─ True → continue                              │
 │                 └─ False → skip                                 │
-│                      │                                         │
-│                      ▼                                         │
+│                      │                                          │
+│                      ▼                                          │
 │            get_latest_event(issue_id)                           │
-│                      │                                         │
-│                      ▼                                         │
+│                      │                                          │
+│                      ▼                                          │
 │            render_prompt(issue, event, issue_markdown)          │
-│                      │                                         │
-│                      ▼                                         │
-│            Claude Code Agent runs on your codebase             │
-│                      │                                         │
-│                      ▼                                         │
+│                      │                                          │
+│                      ▼                                          │
+│            Claude Code Agent runs on your codebase              │
+│                      │                                          │
+│                      ▼                                          │
 │            post_exec_fn(issue, event, result, **kwargs)         │
 └─────────────────────────────────────────────────────────────────┘
 ```
